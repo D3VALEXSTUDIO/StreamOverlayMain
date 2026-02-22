@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>D3VALEXSTUDIOS Stream Overlay</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  :root {
+    --cream:     #F5EFE0;
+    --parchment: #EDE0C4;
+    --espresso:  #3B2314;
+    --caramel:   #C08040;
+    --gold:      #D4A855;
+    --sage:      #8A9E7A;
+    --panel-bg:  linear-gradient(160deg, #2A1A0E 0%, #3B2314 55%, #4A2E18 100%);
+    --border:    rgba(212,168,85,0.38);
+  }
+
+  html, body {
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    background: transparent !important;
+    font-family: 'Lato', sans-serif;
+  }
+
+  .overlay {
+    position: absolute;
+    inset: 0;
+    background: transparent;
+    pointer-events: none;
+  }
+
+  /* ── SHARED PANEL ── */
+  .panel {
+    position: absolute;
+    background: var(--panel-bg);
+  }
+  .panel::after {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      repeating-linear-gradient(92deg, transparent 0px, transparent 3px, rgba(255,255,255,0.012) 3px, rgba(255,255,255,0.012) 4px),
+      repeating-linear-gradient(180deg, transparent 0px, transparent 8px, rgba(0,0,0,0.04) 8px, rgba(0,0,0,0.04) 9px);
+    pointer-events: none;
+  }
+
+  /* ════════════════════════════
+     TOP BAR  —  120px tall, full width
+  ════════════════════════════ */
+  .top-bar {
+    top: 0; left: 0; right: 0; height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    border-bottom: 2px solid var(--border);
+    gap: 24px;
+  }
+
+  /* brand block */
+  .brand {
+    display: flex; align-items: center; gap: 14px;
+    flex-shrink: 0;
+  }
+  .brand-icon {
+    width: 52px; height: 52px;
+    background: linear-gradient(135deg, var(--caramel), var(--gold));
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+    box-shadow: 0 2px 14px rgba(212,168,85,0.4);
+    flex-shrink: 0;
+  }
+  .brand-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px; font-weight: 700;
+    color: var(--gold); letter-spacing: 2px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    line-height: 1;
+  }
+  .brand-sub {
+    font-size: 10px; color: var(--parchment);
+    letter-spacing: 4px; text-transform: uppercase;
+    opacity: 0.65; margin-top: 4px;
+  }
+
+  /* ── TOP BAR CENTER: follower / subscriber / raider ── */
+  .top-widgets {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex: 1;
+    justify-content: center;
+  }
+
+  .top-widget {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(245,239,224,0.06);
+    border: 1px solid rgba(212,168,85,0.22);
+    border-radius: 10px;
+    padding: 10px 18px;
+    position: relative;
+    overflow: hidden;
+    min-width: 200px;
+    transition: border-color 0.4s;
+  }
+  .top-widget::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(212,168,85,0.5), transparent);
+  }
+  .top-widget.active {
+    border-color: rgba(212,168,85,0.65);
+    animation: pulse-card 2s ease-out;
+  }
+  @keyframes pulse-card {
+    0%  { box-shadow: 0 0 0 0 rgba(212,168,85,0.5); }
+    50% { box-shadow: 0 0 0 8px rgba(212,168,85,0); }
+    100%{ box-shadow: none; }
+  }
+
+  .top-widget-icon { font-size: 22px; flex-shrink: 0; }
+
+  .top-widget-info { display: flex; flex-direction: column; }
+  .top-widget-label {
+    font-size: 9px; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--gold); opacity: 0.7; font-weight: 700; line-height: 1;
+    margin-bottom: 4px;
+  }
+  .top-widget-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 15px; font-weight: 600;
+    color: var(--cream);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 160px;
+    min-height: 20px;
+    line-height: 1;
+  }
+
+  /* divider between widgets */
+  .top-sep {
+    width: 1px; height: 40px;
+    background: linear-gradient(180deg, transparent, var(--gold), transparent);
+    opacity: 0.3;
+    flex-shrink: 0;
+  }
+
+  /* ── TOP BAR RIGHT: clock + date ── */
+  .clock-block {
+    text-align: right;
+    flex-shrink: 0;
+  }
+  #clock {
+    font-family: 'Playfair Display', serif;
+    font-size: 32px; color: var(--gold);
+    letter-spacing: 2px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    line-height: 1;
+  }
+  #date {
+    font-size: 11px; color: var(--parchment);
+    letter-spacing: 3px; text-transform: uppercase;
+    opacity: 0.6; margin-top: 5px;
+  }
+
+  /* ════════════════════════════
+     RIGHT SIDEBAR — 340px wide
+     top: 120px (below top bar)
+     bottom: 0
+  ════════════════════════════ */
+  .right-sidebar {
+    top: 120px; right: 0; bottom: 0;
+    width: 340px;
+    border-left: 2px solid var(--border);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* gold corner bracket where top bar meets sidebar */
+  .corner-tl {
+    position: absolute;
+    top: 120px; right: 340px;
+    width: 24px; height: 24px;
+    border-top: 2px solid var(--gold);
+    border-right: 2px solid var(--gold);
+    z-index: 10;
+  }
+
+  /* ── CHAT AREA (fills space above camera) ── */
+  .chat-area {
+    flex: 1;
+    position: relative;
+    border-bottom: 2px solid var(--border);
+    overflow: hidden;
+    /* transparent — SE chat widget goes here as a separate OBS source */
+    background: rgba(42,26,14,0.45);
+  }
+
+  .chat-label {
+    position: absolute;
+    top: 10px; left: 14px;
+    font-size: 9px; letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--gold); opacity: 0.45; font-weight: 700;
+    pointer-events: none;
+  }
+
+  /* ── CAMERA BOX — 340×280px ── */
+  .camera-box {
+    width: 340px;
+    height: 280px;
+    flex-shrink: 0;
+    position: relative;
+    /* transparent — webcam source goes behind this in OBS */
+    background: rgba(30,16,6,0.6);
+    overflow: hidden;
+  }
+
+  /* gold border frame on camera */
+  .camera-box::before {
+    content: '';
+    position: absolute; inset: 0;
+    border: 2px solid rgba(212,168,85,0.35);
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  /* shimmer top on camera */
+  .camera-box::after {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    z-index: 3;
+  }
+
+  /* corner brackets on camera */
+  .cam-corner {
+    position: absolute;
+    width: 18px; height: 18px;
+    z-index: 4;
+  }
+  .cam-corner.tl { top: 0;  left: 0;  border-top: 2px solid var(--gold); border-left: 2px solid var(--gold); }
+  .cam-corner.tr { top: 0;  right: 0; border-top: 2px solid var(--gold); border-right: 2px solid var(--gold); }
+  .cam-corner.bl { bottom: 0; left: 0;  border-bottom: 2px solid var(--gold); border-left: 2px solid var(--gold); }
+  .cam-corner.br { bottom: 0; right: 0; border-bottom: 2px solid var(--gold); border-right: 2px solid var(--gold); }
+
+  .cam-label {
+    position: absolute;
+    bottom: 10px; left: 14px;
+    font-size: 9px; letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--gold); opacity: 0.45; font-weight: 700;
+    z-index: 5;
+  }
+
+  /* ── DUST MOTES ── */
+  .motes { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+  .mote {
+    position: absolute; border-radius: 50%;
+    background: rgba(212,168,85,0.35);
+    animation: floatup linear infinite;
+  }
+  @keyframes floatup {
+    0%  { transform: translateY(0) scale(1);   opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 0.5; }
+    100%{ transform: translateY(-200px) scale(0.4); opacity: 0; }
+  }
+
+</style>
+</head>
+<body>
+<div class="overlay">
+
+  <div class="motes" id="motes"></div>
+
+  <!-- ══ TOP BAR ══ -->
+  <div class="panel top-bar">
+
+    <!-- Brand -->
+    <div class="brand">
+      <div class="brand-icon">☕</div>
+      <div>
+        <div class="brand-name">D3VALEXSTUDIOS</div>
+        <div class="brand-sub">Est. in code &amp; coffee</div>
+      </div>
+    </div>
+
+    <!-- Center widgets -->
+    <div class="top-widgets">
+
+      <div class="top-widget" id="w-follower">
+        <span class="top-widget-icon">🌿</span>
+        <div class="top-widget-info">
+          <div class="top-widget-label">Recent Follower</div>
+          <div class="top-widget-name" id="follower-name"></div>
+        </div>
+      </div>
+
+      <div class="top-sep"></div>
+
+      <div class="top-widget" id="w-subscriber">
+        <span class="top-widget-icon">✨</span>
+        <div class="top-widget-info">
+          <div class="top-widget-label">Recent Subscriber</div>
+          <div class="top-widget-name" id="subscriber-name"></div>
+        </div>
+      </div>
+
+      <div class="top-sep"></div>
+
+      <div class="top-widget" id="w-raider">
+        <span class="top-widget-icon">⚔️</span>
+        <div class="top-widget-info">
+          <div class="top-widget-label">Recent Raider</div>
+          <div class="top-widget-name" id="raider-name"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Clock -->
+    <div class="clock-block">
+      <div id="clock">00:00:00</div>
+      <div id="date">Sunday, Feb 22</div>
+    </div>
+
+  </div>
+
+  <!-- ══ RIGHT SIDEBAR ══ -->
+  <div class="panel right-sidebar">
+
+    <!-- Chat area -->
+    <div class="chat-area">
+      <div class="chat-label">Live Chat</div>
+    </div>
+
+    <!-- Camera box -->
+    <div class="camera-box">
+      <div class="cam-corner tl"></div>
+      <div class="cam-corner tr"></div>
+      <div class="cam-corner bl"></div>
+      <div class="cam-corner br"></div>
+      <div class="cam-label">D3VALEXSTUDIOS</div>
+    </div>
+
+  </div>
+
+  <!-- corner bracket where top bar meets sidebar -->
+  <div class="corner-tl"></div>
+
+</div>
+
+<script>
+  // ── Clock ──
+  function updateClock() {
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2,'0');
+    const m = String(now.getMinutes()).padStart(2,'0');
+    const s = String(now.getSeconds()).padStart(2,'0');
+    document.getElementById('clock').textContent = `${h}:${m}:${s}`;
+    const days   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    document.getElementById('date').textContent =
+      `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}`;
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  // ── Dust motes (top bar + right sidebar zones only) ──
+  const motesEl = document.getElementById('motes');
+  for (let i = 0; i < 22; i++) {
+    const mo = document.createElement('div');
+    mo.className = 'mote';
+    const size = Math.random() * 3 + 1;
+    // alternate: top bar zone vs right sidebar zone
+    let xPct, yPct;
+    if (i % 2 === 0) {
+      // top bar — full width, top 120px
+      xPct = Math.random() * 100;
+      yPct = Math.random() * 11; // 120/1080 ≈ 11%
+    } else {
+      // right sidebar — rightmost 340px
+      xPct = 82 + Math.random() * 18; // 340/1920 ≈ 18%
+      yPct = 11 + Math.random() * 89;
+    }
+    mo.style.cssText = `
+      width:${size}px; height:${size}px;
+      left:${xPct}%; top:${yPct}%;
+      animation-duration:${8+Math.random()*12}s;
+      animation-delay:${Math.random()*10}s;
+    `;
+    motesEl.appendChild(mo);
+  }
+
+  // ── Widget update functions (call from your alert integration) ──
+  window.setFollower = function(name) {
+    document.getElementById('follower-name').textContent = name;
+    const card = document.getElementById('w-follower');
+    card.classList.remove('active'); void card.offsetWidth; card.classList.add('active');
+  };
+  window.setSubscriber = function(name) {
+    document.getElementById('subscriber-name').textContent = name;
+    const card = document.getElementById('w-subscriber');
+    card.classList.remove('active'); void card.offsetWidth; card.classList.add('active');
+  };
+  window.setRaider = function(name) {
+    document.getElementById('raider-name').textContent = name;
+    const card = document.getElementById('w-raider');
+    card.classList.remove('active'); void card.offsetWidth; card.classList.add('active');
+  };
+</script>
+</body>
+</html>
